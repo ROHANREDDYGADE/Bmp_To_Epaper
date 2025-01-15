@@ -17,7 +17,9 @@
 
 #After making changes to the ModuleType.cpp you can execute it with g++ -o bmp_to_epaper.exe bmp_to_epaper.cpp ModuleType.cpp stdafx.cpp for windows
 
-#g++ -o bmp_to_epaper.exe bmp_to_epaper.cpp ModuleType.cpp for linux
+#g++ -o bmp_to_epaper.exe bmp_to_epaper.cpp ModuleType.cpp for linux.
+
+#if the .exe files do not work execute them again as mentioned above 
 
 
 
