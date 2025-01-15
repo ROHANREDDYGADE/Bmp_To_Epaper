@@ -1,7 +1,7 @@
 # BMP to ePaper or e-ink displays
 
 #BMP command line 
-.\bmp_to_epaper.exe <iamge_name.bmp> <profile_name>
+.\bmp_to_epaper.exe <iamge_name.bmp> <profile_name>  you find the executables in bmp_to_epaper and bmp_to_epaper_linux
 
 
 
