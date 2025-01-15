@@ -1,220 +1,188 @@
-
-#include "stdafx.h"
-#include "windows.h"
+// Standard C/C++ headers
+#include <stdio.h>
+#include <stdlib.h>
+#include <string>
+#include <string.h>
+#include <errno.h>
+#include <stdint.h>
 #include "ModuleType.h"
 
-
-//Set to 1 for a one dimensional array. Set to 0 for the more conventional
-//2-dimensional array.
+// Define ONE_DIM macro
 #define ONE_DIM (1)
+
+// Define Windows-specific types
+typedef uint16_t WORD;
+typedef uint32_t DWORD;
+typedef int32_t LONG;
+
+// Global variable
 Module enteredModule;
 
-//
-//===========================================================================
-std::string getOutputFile(const char *path)
-{
-	std::string
-		myPath;
-	char
-		drive[_MAX_DRIVE];
-	char
-		dir[_MAX_DIR];
-	char
-		fname[_MAX_FNAME];
-	char
-		ext[_MAX_EXT];
+// Structures for BMP handling
+#pragma pack(push, 1)
+typedef struct tagBITMAPFILEHEADER {
+    WORD    bfType;
+    DWORD   bfSize;
+    WORD    bfReserved1;
+    WORD    bfReserved2;
+    DWORD   bfOffBits;
+} BITMAPFILEHEADER;
 
-	_splitpath_s(path, drive, dir, fname, ext );
+typedef struct tagBITMAPINFOHEADER {
+    DWORD   biSize;
+    LONG    biWidth;
+    LONG    biHeight;
+    WORD    biPlanes;
+    WORD    biBitCount;
+    DWORD   biCompression;
+    DWORD   biSizeImage;
+    LONG    biXPelsPerMeter;
+    LONG    biYPelsPerMeter;
+    DWORD   biClrUsed;
+    DWORD   biClrImportant;
+} BITMAPINFOHEADER;
+#pragma pack(pop)
 
-	myPath = drive;
-	myPath += dir;
-	myPath += fname;
-	myPath += ".h";
-
-	return myPath;
-}
-unsigned char *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader)
-  {
-  FILE
-   *filePtr;
-  BITMAPFILEHEADER
-    bitmapFileHeader;
-
-  //We will allocate memory for the bitmap, image data at this pointer.
-  unsigned char
-   *bitmapImage;
-  size_t
-    bytes_read_from_bitmap;
-  errno_t
-    file_open_err;
-
-  //open filename in read binary mode
-  file_open_err=fopen_s(&filePtr,filename,"rb");
-  if(file_open_err)
-    {
-	printf("Error# %d: %s reading the BMP in: \"%s\"\n",file_open_err,strerror(file_open_err), filename);
-	return(NULL);
+// Function to get output filename
+std::string getOutputFile(const char *path) {
+    std::string inputPath(path);
+    size_t lastDot = inputPath.find_last_of('.');
+    size_t lastSlash = inputPath.find_last_of('/');
+    
+    if (lastDot == std::string::npos) {
+        return inputPath + ".h";
     }
-
-  //read the bitmap file header
-  fread(&bitmapFileHeader,sizeof(BITMAPFILEHEADER),1,filePtr);
-
-  //verify that this is a bmp file by check bitmap id
-  if(0x4D42 != bitmapFileHeader.bfType)
-    {
-    fclose(filePtr);
-    return(NULL);
+    
+    if (lastSlash == std::string::npos) {
+        return inputPath.substr(0, lastDot) + ".h";
     }
-
-  //read the bitmap info header
-  fread(bitmapInfoHeader, sizeof(BITMAPINFOHEADER),1,filePtr);
-
-  //move file point to the begining of bitmap data
-  fseek(filePtr, bitmapFileHeader.bfOffBits, SEEK_SET);
-
-  int imageSize = bitmapInfoHeader->biHeight*bitmapInfoHeader->biWidth * 3;
-
-  //allocate enough memory for the bitmap image data
-  bitmapImage = (unsigned char*)malloc(imageSize);
-
-
-  //verify memory allocation
-  if (NULL == bitmapImage)
-  {
-    fclose(filePtr);
-    return(NULL);
-  }
-
-  //read in the bitmap image data
-  bytes_read_from_bitmap =
-    fread(bitmapImage, 1, imageSize, filePtr);
-
-  //make sure bitmap image data was read
-  if (bytes_read_from_bitmap != imageSize)
-  {
-    free(bitmapImage);
-    fclose(filePtr);
-    return(NULL);
-  }
-
-  //We are only set up to do 24 bit BMPs, which are
-  //more or less standard.
-  if (bitmapInfoHeader->biBitCount != 24)
-  {
-    free(bitmapImage);
-    fclose(filePtr);
-    return(NULL);
-  }
-
-  //close file
-  fclose(filePtr);
-  //return bitmap image data
-  return(bitmapImage);
+    
+    std::string directory = inputPath.substr(0, lastSlash + 1);
+    std::string filename = inputPath.substr(lastSlash + 1, lastDot - lastSlash - 1);
+    return directory + filename + ".h";
 }
 
-//===========================================================================
-void usage(char *our_name)
-  {
-  printf("Usage:\n");
-  printf("  %s [infile]\n", our_name);
-  printf("  [infile] is 24-bit BMP\n");
-  printf("  This application will generate a c based header file for Gray 2BPP and Red 1BPP packed source\n");
-  }
-//===========================================================================
-int main(int argc, char*  argv[])
-{
-	//argv[0] = program location
-	//argv[1] = bmp
-	//argv[2] = CFA ePaper PN
+// Function to load BMP file
+unsigned char *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader) {
+    FILE *filePtr;
+    BITMAPFILEHEADER bitmapFileHeader;
+    unsigned char *bitmapImage;
+    size_t bytes_read_from_bitmap;
 
-	BITMAPINFOHEADER
-		bitmapInfoHeader;
-	unsigned char
-		*bitmapData;
+    filePtr = fopen(filename, "rb");
+    if (!filePtr) {
+        printf("Error opening file: %s\n", strerror(errno));
+        return NULL;
+    }
 
+    fread(&bitmapFileHeader, sizeof(BITMAPFILEHEADER), 1, filePtr);
 
-	//Must have 3 parameters including path
-	if (3 != argc)
-	{
-		usage(argv[0]);
-		printf("Incorrect number of arguments entered");
-		return(1);
-	}
+    if (0x4D42 != bitmapFileHeader.bfType) {
+        fclose(filePtr);
+        return NULL;
+    }
 
+    fread(bitmapInfoHeader, sizeof(BITMAPINFOHEADER), 1, filePtr);
+    fseek(filePtr, bitmapFileHeader.bfOffBits, SEEK_SET);
 
-	//set the parameters of the module for the entered CFA PN
-	enteredModule.setModuleType(argv[2]);
-	//enteredModule.setModuleType("Wrong");
-	
-	char *sourceFile = argv[1];
-	std::string outputFile = getOutputFile(argv[1]);
+    int imageSize = bitmapInfoHeader->biHeight * bitmapInfoHeader->biWidth * 3;
+    bitmapImage = (unsigned char*)malloc(imageSize);
 
-	printf("Reading input bitmap: %s\n", argv[1]);
-	//Crack open the BMP, and read the image data
-	bitmapData = LoadBitmapFile(argv[1], &bitmapInfoHeader);
+    if (NULL == bitmapImage) {
+        fclose(filePtr);
+        return NULL;
+    }
 
-	//Check that the operation went OK.
-	if (NULL == bitmapData)
-	{
-		printf("Error reading/processing the BMP.\n");
-		system("pause");
-		usage(argv[0]);
-		return(1);
-	}
+    bytes_read_from_bitmap = fread(bitmapImage, 1, imageSize, filePtr);
 
-	printf("biWidth = %d\n", bitmapInfoHeader.biWidth);
-	printf("biHeight = %d\n", bitmapInfoHeader.biHeight);
-	printf("biBitCount = %d\n", bitmapInfoHeader.biBitCount);
+    if (bytes_read_from_bitmap != imageSize) {
+        free(bitmapImage);
+        fclose(filePtr);
+        return NULL;
+    }
 
-	//check to make sure the pixel width of the image matches the screen width
-	if (enteredModule.getWidth() != bitmapInfoHeader.biWidth)
-	{
-		printf("Pixel width of %d is not allowed for this module, image must be %d pixels wide.",bitmapInfoHeader.biWidth,enteredModule.getWidth());
-		while (1);
-	}
+    if (bitmapInfoHeader->biBitCount != 24) {
+        free(bitmapImage);
+        fclose(filePtr);
+        return NULL;
+    }
 
-	//check to make sure the pixel height of the image matches the screen height
-	if (enteredModule.getLength() != bitmapInfoHeader.biHeight)
-	{
-		printf("Height of %d pixels is not allowed for this module, image must be %d pixels in height.", bitmapInfoHeader.biHeight, enteredModule.getLength());
-		while (1);
-	}
+    fclose(filePtr);
+    return bitmapImage;
+}
 
+// Usage function
+void usage(char *our_name) {
+    printf("Usage:\n");
+    printf("  %s [infile]\n", our_name);
+    printf("  [infile] is 24-bit BMP\n");
+    printf("  This application will generate a c based header file for Gray 2BPP and Red 1BPP packed source\n");
+}
 
-	//We are only set up to do 24 bit BMPs, which are
-	//more or less standard.
-	if (24 != bitmapInfoHeader.biBitCount)
-	{
-		printf("This  program  can  only  process  24  bit  BMPs, the  input  BMP  is  %d\n",
-			bitmapInfoHeader.biBitCount);
-		usage(argv[0]);
-		//free  the  memory  allocated  by  LoadBitmapFile
-		free(bitmapData);
-		return(1);
-	}
+// Main function
+int main(int argc, char* argv[]) {
+    BITMAPINFOHEADER bitmapInfoHeader;
+    unsigned char *bitmapData;
 
-	errno_t
-		file_open_err;
-	FILE
-		*Grey_2bit_and_Red_1bit_out;
+    if (3 != argc) {
+        usage(argv[0]);
+        printf("Incorrect number of arguments entered");
+        return 1;
+    }
 
-	file_open_err = fopen_s(&Grey_2bit_and_Red_1bit_out, outputFile.c_str(), "wt");
-	if (file_open_err)
-	{
-		printf("Error# %d: %s opening the 2bpp grey + 1bpp red output file: \"%s\"\n", file_open_err, strerror(file_open_err), outputFile.c_str());
-		usage(argv[0]);
-		//free the memory allocated by LoadBitmapFile
-		free(bitmapData);
-		//Indcicate failure, exit
-		return 0;
-	}
-	printf("Opened \"%s\" as the 2bpp grey + 1bpp red output file.\n", outputFile.c_str());
+    enteredModule.setModuleType(argv[2]);
+    
+    char *sourceFile = argv[1];
+    std::string outputFile = getOutputFile(argv[1]);
 
-	//The output file is open. Write out the header information to the grey file.
+    printf("Reading input bitmap: %s\n", argv[1]);
+    bitmapData = LoadBitmapFile(argv[1], &bitmapInfoHeader);
 
-	fprintf(Grey_2bit_and_Red_1bit_out, "//Source image file: \"%s\"\n", argv[1]);
-	fprintf(Grey_2bit_and_Red_1bit_out, "#define HEIGHT_PIXELS    (%d)\n", bitmapInfoHeader.biHeight);
-	fprintf(Grey_2bit_and_Red_1bit_out, "#define WIDTH_PIXELS     (%d)\n", bitmapInfoHeader.biWidth);
+    if (NULL == bitmapData) {
+        printf("Error reading/processing the BMP.\n");
+        usage(argv[0]);
+        return 1;
+    }
+
+    printf("biWidth = %d\n", bitmapInfoHeader.biWidth);
+    printf("biHeight = %d\n", bitmapInfoHeader.biHeight);
+    printf("biBitCount = %d\n", bitmapInfoHeader.biBitCount);
+
+    if (enteredModule.getWidth() != bitmapInfoHeader.biWidth) {
+        printf("Pixel width of %d is not allowed for this module, image must be %d pixels wide.",
+               bitmapInfoHeader.biWidth, enteredModule.getWidth());
+        while (1);
+    }
+
+    if (enteredModule.getLength() != bitmapInfoHeader.biHeight) {
+        printf("Height of %d pixels is not allowed for this module, image must be %d pixels in height.", 
+               bitmapInfoHeader.biHeight, enteredModule.getLength());
+        while (1);
+    }
+
+    if (24 != bitmapInfoHeader.biBitCount) {
+        printf("This program can only process 24 bit BMPs, the input BMP is %d\n",
+               bitmapInfoHeader.biBitCount);
+        usage(argv[0]);
+        free(bitmapData);
+        return 1;
+    }
+
+    FILE *Grey_2bit_and_Red_1bit_out = fopen(outputFile.c_str(), "wt");
+    if (!Grey_2bit_and_Red_1bit_out) {
+        printf("Error opening the output file: %s\n", strerror(errno));
+        usage(argv[0]);
+        free(bitmapData);
+        return 1;
+    }
+
+    printf("Opened \"%s\" as the 2bpp grey + 1bpp red output file.\n", outputFile.c_str());
+
+    // Write header information
+    fprintf(Grey_2bit_and_Red_1bit_out, "//Source image file: \"%s\"\n", argv[1]);
+    fprintf(Grey_2bit_and_Red_1bit_out, "#define HEIGHT_PIXELS    (%d)\n", bitmapInfoHeader.biHeight);
+    fprintf(Grey_2bit_and_Red_1bit_out, "#define WIDTH_PIXELS     (%d)\n", bitmapInfoHeader.biWidth);
+
 if(enteredModule.getGBits() == 2)
 	fprintf(Grey_2bit_and_Red_1bit_out, "#define WIDTH_GREY_BYTES (%d)\n", (bitmapInfoHeader.biWidth + 0x03) >> 2);
 

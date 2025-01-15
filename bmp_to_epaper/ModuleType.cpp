@@ -193,6 +193,51 @@ void Module::setModuleType(std::string enteredModule)
     reverseColor = false;
     leftToRight = true;
   }
+      // Add the 300x400 ePaper module
+    else if (enteredModule == "Custom300x400")
+    {
+        gBits = 1;  // Assuming 1 bit for grayscale (black and white)
+        rBits = 0;  // No red
+        yBits = 0;  // No yellow
+
+        modWidth = 300;   // Width of the display (300 pixels)
+        modLength = 400;  // Height of the display (400 pixels)
+        reverseColor = false;  // Default polarity (not inverted)
+        leftToRight = true;    // Update from left to right
+    }
+        else if (enteredModule == "Custom300x400in")
+    {
+        gBits = 1;  // Assuming 1 bit for grayscale (black and white)
+        rBits = 0;  // No red
+        yBits = 0;  // No yellow
+
+        modWidth = 300;   // Width of the display (300 pixels)
+        modLength = 400;  // Height of the display (400 pixels)
+        reverseColor = true;  // Default polarity (not inverted)
+        leftToRight = true;    // Update from left to right
+    }
+    else if (enteredModule == "Custom300x395")
+    {
+        gBits = 1;  // Assuming 1 bit for grayscale (black and white)
+        rBits = 0;  // No red
+        yBits = 0;  // No yellow
+
+        modWidth = 300;   // Width of the display (300 pixels)
+        modLength = 395;  // Height of the display (400 pixels)
+        reverseColor = false;  // Default polarity (not inverted)
+        leftToRight = true;    // Update from left to right
+    }
+        else if (enteredModule == "Custom300x380")
+    {
+        gBits = 1;  // Assuming 1 bit for grayscale (black and white)
+        rBits = 0;  // No red
+        yBits = 0;  // No yellow
+
+        modWidth = 300;   // Width of the display (300 pixels)
+        modLength = 380;  // Height of the display (400 pixels)
+        reverseColor = false;  // Default polarity (not inverted)
+        leftToRight = true;    // Update from left to right
+    }
   else
 	{
     int size = 12;
@@ -209,7 +254,11 @@ void Module::setModuleType(std::string enteredModule)
       "CFAP176264B00270",
       "CFAP200200A00154",
       "CFAP400300C00420",
-      "CFAP640384A00750"
+      "CFAP640384A00750",
+      "Custom300x400",
+      "Custom300x400in",
+      "Custom300x395",
+      "Custom300x380"
     };
 		printf("Module part number %s is not a valid Part number.\n", enteredModule.c_str());
 		printf("The following are valid partnumbers:\n");
@@ -224,7 +273,7 @@ void Module::setModuleType(std::string enteredModule)
 
 int Module::getWidth()
 {
-	if (modWidth != NULL)
+	if (modWidth != 0)
 	{
 		return(modWidth);
 	}
@@ -238,7 +287,7 @@ int Module::getWidth()
 
 int Module::getLength()
 {
-	if (modLength != NULL)
+	if (modLength != 0)
 	{
 		return(modLength);
 	}
@@ -251,7 +300,7 @@ int Module::getLength()
 
 int Module::getRBits(void)
 {
-  if (rBits != NULL)
+  if (rBits != 0)
   {
     return rBits;
   }
@@ -263,7 +312,7 @@ int Module::getRBits(void)
 
 int Module::getYBits(void)
 {
-  if (yBits != NULL)
+  if (yBits != 0)
   {
     return yBits;
   }
@@ -275,7 +324,7 @@ int Module::getYBits(void)
 
 int Module::getGBits()
 {
-	if (gBits != NULL)
+	if (gBits != 0)
 	{
 		return gBits;
 	}
